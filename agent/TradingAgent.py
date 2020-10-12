@@ -514,6 +514,12 @@ class TradingAgent(FinancialAgent):
     # trade).
     self.stream_history[self.symbol] = orders
 
+  # 20200305 Chris Cho - created a new utility function to sort datastream
+  # returns a pandas dataframe of available orders queried by the "queryOrderStream" function
+  def getKnownStreamHistory (self, symbol):
+
+    return self.stream_history[self.symbol] #order_history
+
   def query_transacted_volume(self, symbol, transacted_volume):
     """ Handles the QUERY_TRANSACTED_VOLUME messages from the exchange agent"""
     self.transacted_volume[symbol] = transacted_volume
