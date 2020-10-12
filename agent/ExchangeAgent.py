@@ -217,12 +217,57 @@ class ExchangeAgent(FinancialAgent):
         log_print("{} received QUERY_ORDER_STREAM ({}:{}) request from agent {}", self.name, symbol, length,
                   msg.body['sender'])
 
+      # 20200307 Chris Cho - The order_books.history is in a bad form. The below function restructures it.
+
+      def structure_history (history):
+    
+        order_history = []
+        current_order = []
+        message_header = []
+        first_pass = 0
+
+        for layer in history:
+
+          for id, info in layer.items():
+            current_order = [id]
+            message_header = ['id']
+
+            for categories in info.items():
+              current_order.append(categories[1])
+              message_header.append(categories[0])
+            
+            # this is probably the problem
+            if first_pass == 0:
+              order_history = pd.DataFrame([current_order], columns = message_header)
+                
+              first_pass += 1
+        
+            else:
+              append_dummy = pd.DataFrame([current_order], columns = message_header)
+              order_history = order_history.append(append_dummy, ignore_index = True)
+
+        order_history = pd.DataFrame(order_history)
+
+        if order_history.shape != (0,0):
+          order_history = order_history.sort_values(by = 'id', ascending=False)
+          
+          # reset the index to make the dataframe easier to use
+          order_history.reset_index(drop=True, inplace=True)
+
+        return order_history
+
+      history = structure_history(self.order_books[symbol].history)
+
       # We return indices [1:length] inclusive because the agent will want "orders leading up to the last
       # L trades", and the items under index 0 are more recent than the last trade.
+      # 20200304 Chris Cho - Changed the indices to [0:length] to include the most recent order,
+      # rather than exclusing it - note that this returns everything upto the last "trade" i.e. a successful
+      # transaction.
       self.sendMessage(msg.body['sender'], Message({"msg": "QUERY_ORDER_STREAM", "symbol": symbol, "length": length,
                                                     "mkt_closed": True if currentTime > self.mkt_close else False,
-                                                    "orders": self.order_books[symbol].history[1:length + 1]
+                                                    "orders": history[0:(length)]#self.order_books[symbol].history[0:(length + 1)]
                                                     }))
+                                                    
     elif msg.body['msg'] == 'QUERY_TRANSACTED_VOLUME':
       symbol = msg.body['symbol']
       lookback_period = msg.body['lookback_period']
