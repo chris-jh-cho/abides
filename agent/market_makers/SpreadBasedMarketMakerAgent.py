@@ -15,7 +15,7 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
     _Order = namedtuple('_Order', ['price', 'id'])  # Internal data structure used to describe a placed order
 
     def __init__(self, id, name, type, symbol, starting_cash, order_size=1, window_size=5, anchor=ANCHOR_BOTTOM_STR,
-                 num_ticks=20, wake_up_freq='1s', subscribe=True, subscribe_freq=10e9, subscribe_num_levels=1,
+                 num_ticks=20, lambda_a=0.005, subscribe=True, subscribe_freq=10e9, subscribe_num_levels=1,
                  log_orders=False, random_state=None):
 
         super().__init__(id, name, type, starting_cash=starting_cash, log_orders=log_orders, random_state=random_state)
@@ -25,7 +25,7 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
         self.anchor = self.validateAnchor(anchor)  # anchor either top of window or bottom of window to mid-price
         self.num_ticks = num_ticks  # number of ticks on each side of window in which to place liquidity
 
-        self.wake_up_freq = wake_up_freq  # Frequency of agent wake up
+        self.lambda_a = lambda_a  # Frequency of agent wake up
         self.subscribe = subscribe  # Flag to determine whether to subscribe to data or use polling mechanism
         self.subscribe_freq = subscribe_freq  # Frequency in nanoseconds^-1 at which to receive market updates
                                               # in subscribe mode
@@ -60,6 +60,7 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
     def wakeup(self, currentTime):
         """ Agent wakeup is determined by self.wake_up_freq """
         can_trade = super().wakeup(currentTime)
+        # determine whether the "data subscription" is available at this stage
         if self.subscribe and not self.subscription_requested:
             super().requestDataSubscription(self.symbol, levels=self.subscribe_num_levels, freq=self.subscribe_freq)
             self.subscription_requested = True
@@ -274,7 +275,8 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
 
     def getWakeFrequency(self):
         """ Get time increment corresponding to wakeup period. """
-        return pd.Timedelta(self.wake_up_freq)
+        delta_time = self.random_state.exponential(scale=1.0 / self.lambda_a)
+        return pd.Timedelta('{}ns'.format(int(round(delta_time))))
 
     def cancelAllOrders(self):
         """ Cancels all resting limit orders placed by the market maker """
