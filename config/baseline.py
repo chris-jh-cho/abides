@@ -4,6 +4,8 @@ from agent.ZeroIntelligenceAgent import ZeroIntelligenceAgent
 from agent.ZIP import ZeroIntelligencePlus
 from agent.MomentumAgent import MomentumAgent
 from agent.MeanReversionAgent import MeanReversionAgent
+from agent.market_makers.MarketMakerAgent import MarketMakerAgent
+
 from util.order import LimitOrder
 from util.oracle.SparseMeanRevertingOracle import SparseMeanRevertingOracle
 from util import util
@@ -69,7 +71,7 @@ sigma_n = args.obs_noise
 # before)
 
 seed = args.seed
-if not seed: seed = int(pd.Timestamp.now().timestamp() * 1000000) % (2**32 - 1)
+if not seed: seed = int(pd.Timestamp.now().timestamp() * 1000000) % (2**31 - 1)
 np.random.seed(seed)
 
 # Config parameter that causes util.util.print to suppress most output.
@@ -129,11 +131,11 @@ defaultComputationDelay = 1000000000        # one second
 
 # Note: sigma_s is no longer used by the agents or the fundamental (for sparse discrete simulation).
 
-symbols = { 'JPM' : { 'r_bar' : 1e5, 'kappa' : 1.67e-12, 'agent_kappa' : 1.67e-15, 'sigma_s' : 0, 'fund_vol' : 1e-4, 'megashock_lambda_a' : 2.77778e-13, 'megashock_mean' : 1e3, 'megashock_var' : 5e4, 'random_state' : np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')) } }
+symbols = { 'JPM' : { 'r_bar' : 1e5, 'kappa' : 1.67e-12, 'agent_kappa' : 1.67e-15, 'sigma_s' : 0, 'fund_vol' : 1e-4, 'megashock_lambda_a' : 2.77778e-13, 'megashock_mean' : 1e3, 'megashock_var' : 5e4, 'random_state' : np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 2, dtype='uint64')) } }
  
 
 ### Configure the Kernel.
-kernel = Kernel("Base Kernel", random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')))
+kernel = Kernel("Base Kernel", random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')))
 
 
 
@@ -161,7 +163,7 @@ oracle = SparseMeanRevertingOracle(mkt_open, mkt_close, symbols)
 
 # Create the exchange.
 num_exchanges = 1
-agents.extend([ ExchangeAgent(j, "Exchange Agent {}".format(j), "ExchangeAgent", mkt_open, mkt_close, [s for s in symbols], log_orders=log_orders, book_freq=book_freq, pipeline_delay = 0, computation_delay = 0, stream_history = 10, random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')))
+agents.extend([ ExchangeAgent(j, "Exchange Agent {}".format(j), "ExchangeAgent", mkt_open, mkt_close, [s for s in symbols], log_orders=log_orders, book_freq=book_freq, pipeline_delay = 0, computation_delay = 0, stream_history = 10, random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')))
                 for j in range(agent_count, agent_count + num_exchanges) ])
 agent_types.extend(["ExchangeAgent" for j in range(num_exchanges)])
 agent_count += num_exchanges
@@ -179,7 +181,7 @@ s = symbols[symbol]
 
 # Tuples are: (# agents, R_min, R_max, eta).
 
-
+"""
 # Some configs for ZI agents only (among seven parameter settings).
 # 100 agents
 zi = [ (75, 0, 250, 1), (75, 0, 500, 1), (70, 0, 1000, 0.8), (70, 0, 1000, 1), (70, 0, 2000, 0.8), (70, 250, 500, 0.8), (70, 250, 500, 1) ]
@@ -192,7 +194,7 @@ for i,x in enumerate(zi):
   agents.extend([ ZeroIntelligenceAgent(j, "ZI Agent {} {}".format(j, strat_name), "ZeroIntelligenceAgent {}".format(strat_name), random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')),log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, sigma_n=sigma_n, r_bar=s['r_bar'], kappa=s['agent_kappa'], sigma_s=s['fund_vol'], q_max=10, sigma_pv=5e6, R_min=x[1], R_max=x[2], eta=x[3], lambda_a=1e-12) for j in range(agent_count,agent_count+x[0]) ])
   agent_types.extend([ "ZeroIntelligenceAgent {}".format(strat_name) for j in range(x[0]) ])
   agent_count += x[0]
-
+"""
 
 # 100 ZIP agents
 zi_plus = [ (100, 0, 0, 1) ]
@@ -204,7 +206,7 @@ for i,x in enumerate(zi_plus):
   strat_name = "Type {} [{} <= R <= {}, eta={}]".format(i+1, x[1], x[2], x[3])
 
   agents.extend([ ZeroIntelligencePlus(j, "ZI Agent {} {}".format(j, strat_name), "ZeroIntelligencePlus {}".format(strat_name), 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')), 
+  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
   log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, sigma_n=sigma_n, q_max=10, R_min=x[1], R_max=x[2], eta=x[3], lambda_a=1e-12) 
   for j in range(agent_count,agent_count+x[0]) ])
 
@@ -221,7 +223,7 @@ for i,x in enumerate(mmt):
   strat_name = "Type {} [minimum order size = {}, minimum order size = {}]".format(i+1, x[1], x[2])
 
   agents.extend([ MomentumAgent(j, "MomentumAgent {} {}".format(j, strat_name), "MomentumAgent", 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')), 
+  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
   log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, min_size=x[1], max_size=x[2]) 
   for j in range(agent_count,agent_count+x[0]) ])
 
@@ -233,15 +235,31 @@ for i,x in enumerate(mmt):
 mr = [ (5, 50, 100)]
 
 
-for i,x in enumerate(mmt):
+for i,x in enumerate(mr):
   strat_name = "Type {} [minimum order size = {}, minimum order size = {}]".format(i+1, x[1], x[2])
 
   agents.extend([ MeanReversionAgent(j, "MeanReversionAgent {} {}".format(j, strat_name), "MeanReversionAgent", 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')), 
+  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
   log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, min_size=x[1], max_size=x[2]) 
   for j in range(agent_count,agent_count+x[0]) ])
 
   agent_types.extend([ "MeanReversionAgent {}".format(strat_name) for j in range(x[0]) ])
+  agent_count += x[0]
+
+
+# Market maker 1 agents
+mm = [(1, 50, 100)]
+
+
+for i,x in enumerate(mm):
+  strat_name = "Type {} [order size = {}, window size = {}]".format(i+1, x[1], x[2])
+
+  agents.extend([ MarketMakerAgent(id=j, name="MarketMakerAgent {} {}".format(j, strat_name), type="MarketMakerAgent", 
+  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
+  log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, min_size=x[1], max_size=x[2]) 
+  for j in range(agent_count,agent_count+x[0]) ])
+
+  agent_types.extend([ "MarketMakerAgent {}".format(strat_name) for j in range(x[0]) ])
   agent_count += x[0]
 
 
