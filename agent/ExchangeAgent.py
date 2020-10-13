@@ -248,8 +248,9 @@ class ExchangeAgent(FinancialAgent):
 
         order_history = pd.DataFrame(order_history)
 
+        # in order of entry time, not ID as ID can be heterogeneous across agents
         if order_history.shape != (0,0):
-          order_history = order_history.sort_values(by = 'id', ascending=False)
+          order_history = order_history.sort_values(by = 'entry_time', ascending=False)
           
           # reset the index to make the dataframe easier to use
           order_history.reset_index(drop=True, inplace=True)
