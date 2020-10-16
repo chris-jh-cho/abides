@@ -57,6 +57,11 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
     def kernelStarting(self, startTime):
         super().kernelStarting(startTime)
 
+    def kernelStopping(self):
+        # Always call parent method to be safe.
+        super().kernelStopping()
+
+
     def wakeup(self, currentTime):
         """ Agent wakeup is determined by self.wake_up_freq """
         can_trade = super().wakeup(currentTime)
