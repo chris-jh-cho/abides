@@ -14,7 +14,7 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
 
     _Order = namedtuple('_Order', ['price', 'id'])  # Internal data structure used to describe a placed order
 
-    def __init__(self, id, name, type, symbol, starting_cash, order_size=1, window_size=5, anchor=ANCHOR_BOTTOM_STR,
+    def __init__(self, id, name, type, symbol, starting_cash, order_size=100, window_size=5, anchor=ANCHOR_BOTTOM_STR,
                  num_ticks=20, lambda_a=0.005, subscribe=True, subscribe_freq=10e9, subscribe_num_levels=1,
                  log_orders=False, random_state=None):
 
