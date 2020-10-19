@@ -11,7 +11,7 @@ class MeanReversionAgent(TradingAgent):
     """
 
     def __init__(self, id, name, type, symbol='IBM', starting_cash=100000,
-                 min_size=100, max_size=100, lambda_a=5e-11,
+                 min_size=50, max_size=100, lambda_a=0.05,
                  log_orders=False, random_state=None, short_duration=20,
                  long_duration=40, margin=0):
 
@@ -32,6 +32,10 @@ class MeanReversionAgent(TradingAgent):
 
     def kernelStarting(self, startTime):
         super().kernelStarting(startTime)
+
+    def kernelStopping(self):
+        # Always call parent method to be safe.
+        super().kernelStopping()
 
     def wakeup(self, currentTime):
         """ Agent wakeup is determined by self.wake_up_freq """
