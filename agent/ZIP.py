@@ -11,8 +11,8 @@ class ZeroIntelligencePlus(TradingAgent):
 
     # setup
     def __init__(self, id, name, type, symbol='IBM', starting_cash=100000, sigma_n=1000,
-                 q_max=10, R_min=0, R_max=250, eta=1.0,
-                 lambda_a=0.005, log_orders=False, random_state=None):
+                 q_max=100, R_min=0, R_max=250, eta=1.0,
+                 lambda_a=0.05, log_orders=False, random_state=None):
 
         # Base class init.
         super().__init__(id, name, type, starting_cash=starting_cash, log_orders=log_orders, random_state=random_state)
@@ -30,8 +30,13 @@ class ZeroIntelligencePlus(TradingAgent):
         self.eta = eta  # strategic threshold
         self.lambda_a = lambda_a  # mean arrival rate of ZI agents - this is the exp. distribution parameter to be tuned
         self.order_size = 100 #order size is fixed at 100 to start - the order size needs to be tuned
+        self.prev_holding = 0
         # std of 500 should be plenty
-        self.limit_price = 100000 + np.random.uniform(-5000, 5000)
+        if self.buy:
+            self.limit_price = 100000 + np.random.uniform(-5000, 0)
+
+        else:
+            self.limit_price = 100000 + np.random.uniform(0, 5000)
 
         # we are not querying from an oracle right now
         #self.limit_price = self.oracle.observePrice(self.symbol, startTime, sigma_n=self.sigma_n,random_state=self.random_state)
@@ -47,7 +52,8 @@ class ZeroIntelligencePlus(TradingAgent):
         self.rel_change_up          = 1 + 0.05*np.random.rand() #uniform [1,1.05] fixed per agent
         self.abs_change_down        = -10*np.random.rand() #uniform [-0.05,0] fixed per agent - temporarily changed to 10 cents
         self.rel_change_down        = 1 - 0.05*np.random.rand() #uniform [0.95,1] fixed per agent
-        self.profit_margin          = 0.3 + 0.05*np.random.rand() #uniform [0.3,0.35] fixed per agent
+        self.initial_profit_margin  = 0.3 + 0.05*np.random.rand() #uniform [0.3,0.35] fixed per agent
+        self.profit_margin          = self.initial_profit_margin
 
 
         # the agent uses this to determine which data to query from the orderbook
@@ -149,31 +155,8 @@ class ZeroIntelligencePlus(TradingAgent):
         # be generated for those, anyway, unless something strange has happened.)
         self.cancelOrders()
 
-        # The ZI agent doesn't try to maintain a zero position, so there is no need to exit positions
-        # as some "active trading" agents might.  It might exit a position based on its order logic,
-        # but this will be as a natural consequence of its beliefs.
-
-        # In order to use the "strategic threshold" parameter (eta), the ZI agent needs the current
-        # spread (inside bid/ask quote).  It would not otherwise need any trade/quote information.
-
-        # If the calling agent is a subclass, don't initiate the strategy section of wakeup(), as it
-        # may want to do something different.
-
         # 20200304 Chris Cho - data_dummy added to send out different messages at each wakeup
         if type(self) == ZeroIntelligencePlus:
-
-            """
-            # this is the msssage to query parameter
-            if self.data_dummy == 0:
-
-                self.getCurrentParameter(self.symbol)
-                self.state = 'AWAITING_PARAMETER'
-
-                # set wakeup to earliest time possible to query order stream
-                self.setWakeup(currentTime + pd.Timedelta('{}ns'.format(1e9)))
-
-                self.data_dummy = 1
-            """
 
             # this is the msssage to query spread
             if self.data_dummy == 0:
@@ -204,6 +187,37 @@ class ZeroIntelligencePlus(TradingAgent):
         # Called when it is time for the agent to determine a limit price and place an order.
         limit_price = self.limit_price
         history = self.getKnownStreamHistory(self.symbol)
+
+        # volume should be adjusted on the go until a particular transaction at a given proce
+        # is completed
+
+
+        current_holding = self.getHoldings(self.symbol)
+
+        # if 100 units have been traded (i.e. designated volume has been transacted)
+        if current_holding % 100 == 0 and current_holding != self.prev_holding:
+
+            # reset profit margin
+            self.profit_margin = self.initial_profit_margin
+
+            # order size remains at 100
+            self.order_size = 100
+
+            # receive new price
+            if self.buy:
+                self.limit_price = 100000 + np.random.uniform(0, 5000)
+
+            else:
+                self.limit_price = 100000 + np.random.uniform(-5000, 0)
+
+            self.prev_holding = current_holding
+
+
+        # if transaction has not yet completed at this price
+        else:
+
+            self.order_size = 100 - current_holding % 100
+
 
         # Determine the limit price.
         shout_price = limit_price * (1 - self.profit_margin) if self.buy else limit_price * (1 + self.profit_margin)
