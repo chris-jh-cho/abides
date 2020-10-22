@@ -214,6 +214,8 @@ for i,x in enumerate(zi):
   agents.extend([ ZeroIntelligenceAgent(id = j, 
                                         name="ZI Agent {} {}".format(j, strat_name), 
                                         type="ZeroIntelligenceAgent {}".format(strat_name), 
+                                        mkt_open_time=mkt_open, 
+                                        mkt_close_time=mkt_close, 
                                         symbol=symbol,
                                         starting_cash=starting_cash, 
                                         sigma_n=sigma_n, #observational noise variance
@@ -245,6 +247,8 @@ for i,x in enumerate(zi_plus):
   agents.extend([ ZeroIntelligencePlus(id=j, 
                                        name="ZI Agent {} {}".format(j, strat_name), 
                                        type="ZeroIntelligencePlus {}".format(strat_name),
+                                       mkt_open_time=mkt_open, 
+                                       mkt_close_time=mkt_close, 
                                        symbol=symbol,
                                        starting_cash=starting_cash,
                                        sigma_n=sigma_n,
