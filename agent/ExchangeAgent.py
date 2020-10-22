@@ -116,10 +116,6 @@ class ExchangeAgent(FinancialAgent):
   def receiveMessage(self, currentTime, msg):
     super().receiveMessage(currentTime, msg)
 
-    if self.counter % 1000 == 0:
-      print(currentTime)
-    self.counter += 1
-
     # Unless the intent of an experiment is to examine computational issues within an Exchange,
     # it will typically have either 1 ns delay (near instant but cannot process multiple orders
     # in the same atomic time unit) or 0 ns delay (can process any number of orders, always in
