@@ -4,7 +4,7 @@ from agent.ZeroIntelligenceAgent import ZeroIntelligenceAgent
 from agent.ZIP import ZeroIntelligencePlus
 from agent.MomentumAgent import MomentumAgent
 from agent.MeanReversionAgent import MeanReversionAgent
-from agent.market_makers.MarketMakerAgent import MarketMakerAgent
+from agent.market_makers.SpreadBasedMarketMakerAgent import SpreadBasedMarketMakerAgent
 
 from util.order import LimitOrder
 from util.oracle.SparseMeanRevertingOracle import SparseMeanRevertingOracle
@@ -106,12 +106,12 @@ kernelStartTime = midnight
 
 # When should the Kernel shut down?  (This should be after market close.)
 # Here we go for 5 PM the same day.
-kernelStopTime = midnight + pd.to_timedelta('17:00:00')
+kernelStopTime = midnight + pd.to_timedelta('16:00:00')
 
 # This will configure the kernel with a default computation delay
 # (time penalty) for each agent's wakeup and recvMsg.  An agent
 # can change this at any time for itself.  (nanoseconds)
-defaultComputationDelay = 1000000000        # one second
+defaultComputationDelay = 0        # one second
 
 
 # IMPORTANT NOTE CONCERNING AGENT IDS: the id passed to each agent must:
@@ -131,7 +131,15 @@ defaultComputationDelay = 1000000000        # one second
 
 # Note: sigma_s is no longer used by the agents or the fundamental (for sparse discrete simulation).
 
-symbols = { 'JPM' : { 'r_bar' : 1e5, 'kappa' : 1.67e-12, 'agent_kappa' : 1.67e-15, 'sigma_s' : 0, 'fund_vol' : 1e-4, 'megashock_lambda_a' : 2.77778e-13, 'megashock_mean' : 1e3, 'megashock_var' : 5e4, 'random_state' : np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 2, dtype='uint64')) } }
+symbols = { 'JPM' : { 'r_bar' : 1e5, 
+                      'kappa' : 1.67e-12, 
+                      'agent_kappa' : 1.67e-15, 
+                      'sigma_s' : 0, 
+                      'fund_vol' : 1e-4, 
+                      'megashock_lambda_a' : 2.77778e-13, 
+                      'megashock_mean' : 1e3, 
+                      'megashock_var' : 5e4, 
+                      'random_state' : np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 2, dtype='uint64')) } }
  
 
 ### Configure the Kernel.
@@ -163,7 +171,19 @@ oracle = SparseMeanRevertingOracle(mkt_open, mkt_close, symbols)
 
 # Create the exchange.
 num_exchanges = 1
-agents.extend([ ExchangeAgent(j, "Exchange Agent {}".format(j), "ExchangeAgent", mkt_open, mkt_close, [s for s in symbols], log_orders=log_orders, book_freq=book_freq, pipeline_delay = 0, computation_delay = 0, stream_history = 10, random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')))
+agents.extend([ ExchangeAgent(id=j,
+                              name="Exchange Agent {}".format(j),
+                              type="ExchangeAgent", 
+                              mkt_open=mkt_open, 
+                              mkt_close=mkt_close, 
+                              symbols=[s for s in symbols],
+                              book_freq=book_freq,
+                              wide_book=False,
+                              pipeline_delay=0,
+                              computation_delay = 0,
+                              stream_history = 10,
+                              log_orders=log_orders, 
+                              random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')))
                 for j in range(agent_count, agent_count + num_exchanges) ])
 agent_types.extend(["ExchangeAgent" for j in range(num_exchanges)])
 agent_count += num_exchanges
@@ -181,23 +201,40 @@ s = symbols[symbol]
 
 # Tuples are: (# agents, R_min, R_max, eta).
 
-"""
+
 # Some configs for ZI agents only (among seven parameter settings).
 # 100 agents
-zi = [ (75, 0, 250, 1), (75, 0, 500, 1), (70, 0, 1000, 0.8), (70, 0, 1000, 1), (70, 0, 2000, 0.8), (70, 250, 500, 0.8), (70, 250, 500, 1) ]
+zi = [ (500, 0, 0, 1) ] #, (75, 0, 500, 1), (70, 0, 1000, 0.8), (70, 0, 1000, 1), (70, 0, 2000, 0.8), (70, 250, 500, 0.8), (70, 250, 500, 1) ]
 
 # ZI strategy split.  Note that agent arrival rates are quite small, because our minimum
 # time step is a nanosecond, and we want the agents to arrive more on the order of
 # minutes.
 for i,x in enumerate(zi):
   strat_name = "Type {} [{} <= R <= {}, eta={}]".format(i+1, x[1], x[2], x[3])
-  agents.extend([ ZeroIntelligenceAgent(j, "ZI Agent {} {}".format(j, strat_name), "ZeroIntelligenceAgent {}".format(strat_name), random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')),log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, sigma_n=sigma_n, r_bar=s['r_bar'], kappa=s['agent_kappa'], sigma_s=s['fund_vol'], q_max=10, sigma_pv=5e6, R_min=x[1], R_max=x[2], eta=x[3], lambda_a=1e-12) for j in range(agent_count,agent_count+x[0]) ])
-  agent_types.extend([ "ZeroIntelligenceAgent {}".format(strat_name) for j in range(x[0]) ])
+  agents.extend([ ZeroIntelligenceAgent(id = j, 
+                                        name="ZI Agent {} {}".format(j, strat_name), 
+                                        type="ZeroIntelligenceAgent {}".format(strat_name), 
+                                        symbol=symbol,
+                                        starting_cash=starting_cash, 
+                                        sigma_n=sigma_n, #observational noise variance
+                                        r_bar=s['r_bar'], #true mean fundamental value
+                                        kappa=s['agent_kappa'], #mean reversion parameter
+                                        sigma_s=s['fund_vol'], #shock variance
+                                        sigma_pv=5e6, #private value variance
+                                        q_max=10, #max unit holding
+                                        R_min=x[1], #minimum surplus
+                                        R_max=x[2], #maximum surplus
+                                        eta=x[3], #strategic threshold
+                                        lambda_a=1/6e10, #average arrival rate set to once a minute
+                                        random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**32, dtype='uint64')),
+                                        log_orders=log_orders
+                                        ) for j in range(agent_count,agent_count+x[0])])
+  agent_types.extend([ "ZeroIntelligenceAgent {}".format(strat_name) for j in range(x[0])])
   agent_count += x[0]
-"""
+
 
 # 100 ZIP agents
-zi_plus = [ (100, 0, 0, 1) ]
+zi_plus = [ (20, 0, 0, 1) ]
 
 # ZI strategy split.  Note that agent arrival rates are quite small, because our minimum
 # time step is a nanosecond, and we want the agents to arrive more on the order of
@@ -205,26 +242,45 @@ zi_plus = [ (100, 0, 0, 1) ]
 for i,x in enumerate(zi_plus):
   strat_name = "Type {} [{} <= R <= {}, eta={}]".format(i+1, x[1], x[2], x[3])
 
-  agents.extend([ ZeroIntelligencePlus(j, "ZI Agent {} {}".format(j, strat_name), "ZeroIntelligencePlus {}".format(strat_name), 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
-  log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, sigma_n=sigma_n, q_max=10, R_min=x[1], R_max=x[2], eta=x[3], lambda_a=1e-12) 
+  agents.extend([ ZeroIntelligencePlus(id=j, 
+                                       name="ZI Agent {} {}".format(j, strat_name), 
+                                       type="ZeroIntelligencePlus {}".format(strat_name),
+                                       symbol=symbol,
+                                       starting_cash=starting_cash,
+                                       sigma_n=sigma_n,
+                                       q_max=10,
+                                       R_min=x[1],
+                                       R_max=x[2],
+                                       eta=x[3],
+                                       lambda_a=1/6e10, #average arrival rate set to once a minute
+                                       random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
+                                       log_orders=log_orders) 
   for j in range(agent_count,agent_count+x[0]) ])
 
   agent_types.extend([ "ZeroIntelligencePlus {}".format(strat_name) for j in range(x[0]) ])
   agent_count += x[0]
 
 
-
 # Momentum 20 agents
-mmt = [ (5, 50, 100)]
+mmt = [ (20, 50, 100)]
 
 
 for i,x in enumerate(mmt):
   strat_name = "Type {} [minimum order size = {}, minimum order size = {}]".format(i+1, x[1], x[2])
 
-  agents.extend([ MomentumAgent(j, "MomentumAgent {} {}".format(j, strat_name), "MomentumAgent", 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
-  log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, min_size=x[1], max_size=x[2]) 
+  agents.extend([ MomentumAgent(id=j, 
+                                name="MomentumAgent {} {}".format(j, strat_name),
+                                type="MomentumAgent", 
+                                symbol=symbol, 
+                                starting_cash=starting_cash,
+                                min_size=x[1], 
+                                max_size=x[2],
+                                lambda_a=1/6e10, #average arrival rate set to once a minute
+                                log_orders=log_orders,
+                                random_state=np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
+                                short_duration=20,
+                                long_duration=40,
+                                margin=0) 
   for j in range(agent_count,agent_count+x[0]) ])
 
   agent_types.extend([ "MomentumAgent {}".format(strat_name) for j in range(x[0]) ])
@@ -232,15 +288,25 @@ for i,x in enumerate(mmt):
 
 
 # Mean Reversion 20 agents
-mr = [ (5, 50, 100)]
+mr = [ (20, 50, 100)]
 
 
 for i,x in enumerate(mr):
   strat_name = "Type {} [minimum order size = {}, minimum order size = {}]".format(i+1, x[1], x[2])
 
-  agents.extend([ MeanReversionAgent(j, "MeanReversionAgent {} {}".format(j, strat_name), "MeanReversionAgent", 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
-  log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, min_size=x[1], max_size=x[2]) 
+  agents.extend([ MeanReversionAgent(id=j, 
+                                     name="MeanReversionAgent {} {}".format(j, strat_name), 
+                                     type="MeanReversionAgent",
+                                     symbol=symbol, 
+                                     starting_cash=starting_cash,
+                                     min_size=x[1], 
+                                     max_size=x[2],
+                                     lambda_a=1/6e10, #average arrival rate set to once a minute
+                                     log_orders=log_orders,
+                                     random_state=np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
+                                     short_duration=20,
+                                     long_duration=40,
+                                     margin=0)
   for j in range(agent_count,agent_count+x[0]) ])
 
   agent_types.extend([ "MeanReversionAgent {}".format(strat_name) for j in range(x[0]) ])
@@ -248,20 +314,29 @@ for i,x in enumerate(mr):
 
 
 # Market maker 1 agents
-mm = [(1, 50, 100)]
-
+mm = [(1, 100, 10)]
 
 for i,x in enumerate(mm):
   strat_name = "Type {} [order size = {}, window size = {}]".format(i+1, x[1], x[2])
 
-  agents.extend([ MarketMakerAgent(id=j, name="MarketMakerAgent {} {}".format(j, strat_name), type="MarketMakerAgent", 
-  random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')), 
-  log_orders=log_orders, symbol=symbol, starting_cash=starting_cash, min_size=x[1], max_size=x[2]) 
+  agents.extend([ SpreadBasedMarketMakerAgent(id=j, 
+                                              name="SpreadBasedMarketMakerAgent {} {}".format(j, strat_name), 
+                                              type="SpreadBasedMarketMakerAgent", 
+                                              symbol=symbol,
+                                              starting_cash=starting_cash,
+                                              order_size=x[1],
+                                              window_size=x[2],
+                                              num_ticks=20,
+                                              lambda_a=1/6e10, #average arrival rate set to once a minute
+                                              subscribe=False,
+                                              subscribe_freq=10e9,
+                                              subscribe_num_levels=1,
+                                              log_orders=log_orders,
+                                              random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64'))) 
   for j in range(agent_count,agent_count+x[0]) ])
 
-  agent_types.extend([ "MarketMakerAgent {}".format(strat_name) for j in range(x[0]) ])
+  agent_types.extend([ "SpreadBasedMarketMakerAgent {}".format(strat_name) for j in range(x[0]) ])
   agent_count += x[0]
-
 
 
 ### Configure a simple message latency matrix for the agents.  Each entry is the minimum
@@ -274,8 +349,10 @@ for i,x in enumerate(mm):
 # Other agents can be explicitly set afterward (and the mirror half of the matrix is also).
 
 # This configures all agents to a starting latency as described above.
-latency = np.random.uniform(low = 21000, high = 13000000, size=(len(agent_types),len(agent_types)))
+#latency = np.random.uniform(low = 21000, high = 13000000, size=(len(agent_types),len(agent_types)))
+latency = np.zeros((len(agent_types),len(agent_types)))
 
+"""
 # Overriding the latency for certain agent pairs happens below, as does forcing mirroring
 # of the matrix to be symmetric.
 for i, t1 in zip(range(latency.shape[0]), agent_types):
@@ -292,7 +369,7 @@ for i, t1 in zip(range(latency.shape[0]), agent_types):
       # This is the same agent.  How long does it take to reach localhost?  In our data center, it actually
       # takes about 20 microseconds.
       latency[i,j] = 20000
-
+"""
 
 # Configure a simple latency noise model for the agents.
 # Index is ns extra delay, value is probability of this delay being applied.
