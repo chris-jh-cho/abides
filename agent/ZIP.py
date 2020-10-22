@@ -10,7 +10,8 @@ import copy
 class ZeroIntelligencePlus(TradingAgent):
 
     # setup
-    def __init__(self, id, name, type, symbol='IBM', starting_cash=100000, sigma_n=1000,
+    def __init__(self, id, name, type, mkt_open_time, mkt_close_time, 
+                 symbol='IBM', starting_cash=100000, sigma_n=1000,
                  q_max=100, R_min=0, R_max=250, eta=1.0,
                  lambda_a=0.05, log_orders=False, random_state=None):
 
@@ -29,6 +30,8 @@ class ZeroIntelligencePlus(TradingAgent):
         self.R_max = R_max  # max requested surplus
         self.eta = eta  # strategic threshold
         self.lambda_a = lambda_a  # mean arrival rate of ZI agents - this is the exp. distribution parameter to be tuned
+        self.mkt_open_time = mkt_open_time
+        self.mkt_close_time = mkt_close_time
         self.order_size = 100 #order size is fixed at 100 to start - the order size needs to be tuned
         self.prev_holding = 0
         # std of 500 should be plenty
@@ -37,6 +40,8 @@ class ZeroIntelligencePlus(TradingAgent):
 
         else:
             self.limit_price = 100000 + np.random.uniform(0, 5000)
+
+        self.counter = 0
 
         # we are not querying from an oracle right now
         #self.limit_price = self.oracle.observePrice(self.symbol, startTime, sigma_n=self.sigma_n,random_state=self.random_state)
@@ -176,7 +181,9 @@ class ZeroIntelligencePlus(TradingAgent):
                 self.state = 'AWAITING_ORDER_STREAM'
 
                 # Order arrival time can be fit into exponential distribution
-                self.setWakeup(currentTime + self.getWakeFrequency())
+                wake_time = self.modifyWakeFrequency(currentTime, self.getWakeFrequency())
+    
+                self.setWakeup(currentTime + wake_time)
 
                 self.data_dummy = 0
 
@@ -371,6 +378,27 @@ class ZeroIntelligencePlus(TradingAgent):
 
                 self.state = 'AWAITING_WAKEUP'
 
+
+    # This is the quartic modifier for the next order function. Currently the multiplier is between 5 and 0.5
+    def modifyWakeFrequency(self, current_time, wakeFrequency):
+
+        x               = pd.to_timedelta(current_time - self.mkt_open_time).total_seconds()
+        halfway         = pd.to_timedelta(self.mkt_close_time - self.mkt_open_time).total_seconds()/2
+        quartic         = ((x - halfway)**4 + (x - halfway)**3 + (x - halfway)**2 + (x - halfway))/(halfway**4 + halfway**3 + halfway**2 + halfway) # this is between 1 and 0
+        modification    = quartic*4.5 + 0.5 # now between 5 and 0.5
+
+        #print("Current time is %s, the modified quartic divisor is %f" %(current_time, modification))
+
+        wake_time =  wakeFrequency.total_seconds()*1e9/modification
+
+        if self.counter % 50 == 0:
+            print("Current time: ", current_time, "\nCurrent modifier: ", modification, 
+                    "\nCurrent wake frequency (s): ", round(wakeFrequency.total_seconds()), 
+                    "\nModified wake frequency (s): ", round(wake_time/1e9), "\n")
+        
+        self.counter += 1
+
+        return pd.Timedelta('{}ns'.format(int(round(wake_time))))
         
 
     # Internal state and logic specific to this agent subclass.

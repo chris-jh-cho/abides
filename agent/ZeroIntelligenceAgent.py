@@ -8,10 +8,11 @@ import pandas as pd
 
 class ZeroIntelligenceAgent(TradingAgent):
 
-    def __init__(self, id, name, type, symbol='IBM', starting_cash=100000, sigma_n=1000,
-                 r_bar=100000, kappa=0.05, sigma_s=100000, q_max=10,
-                 sigma_pv=5000000, R_min=0, R_max=250, eta=1.0,
-                 lambda_a=0.005, log_orders=False, random_state=None):
+    def __init__(self, id, name, type, mkt_open_time, mkt_close_time, symbol='IBM', 
+                starting_cash=100000, sigma_n=1000, r_bar=100000, kappa=0.05,
+                sigma_s=100000, q_max=10, sigma_pv=5000000, R_min=0, 
+                R_max=250, eta=1.0, lambda_a=0.005, log_orders=False, 
+                random_state=None):
 
         # Base class init.
         super().__init__(id, name, type, starting_cash=starting_cash, log_orders=log_orders, random_state=random_state)
@@ -28,6 +29,8 @@ class ZeroIntelligenceAgent(TradingAgent):
         self.R_max = R_max  # max requested surplus
         self.eta = eta  # strategic threshold
         self.lambda_a = lambda_a  # mean arrival rate of ZI agents
+        self.mkt_open_time = mkt_open_time
+        self.mkt_close_time = mkt_close_time
 
         # The agent uses this to track whether it has begun its strategy or is still
         # handling pre-market tasks.
@@ -128,8 +131,10 @@ class ZeroIntelligenceAgent(TradingAgent):
         # each agent independently sampling its next arrival time from an exponential
         # distribution in alternate Beta formation with Beta = 1 / lambda, where lambda
         # is the mean arrival rate of the Poisson process.
-        delta_time = self.random_state.exponential(scale=1.0 / self.lambda_a)
-        self.setWakeup(currentTime + pd.Timedelta('{}ns'.format(int(round(delta_time)))))
+
+        wake_time = self.modifyWakeFrequency(currentTime, self.getWakeFrequency())
+        
+        self.setWakeup(currentTime + wake_time)
 
         # If the market has closed and we haven't obtained the daily close price yet,
         # do that before we cease activity for the day.  Don't do any other behavior
@@ -304,6 +309,22 @@ class ZeroIntelligenceAgent(TradingAgent):
                 self.placeOrder()
                 self.state = 'AWAITING_WAKEUP'
 
+    
+    # This is the quartic modifier for the next order function. Currently the multiplier is between 5 and 0.5
+    def modifyWakeFrequency(self, current_time, wakeFrequency):
+
+        x               = pd.to_timedelta(current_time - self.mkt_open_time).total_seconds()
+        halfway         = pd.to_timedelta(self.mkt_close_time - self.mkt_open_time).total_seconds()/2
+        quartic         = ((x - halfway)**4 + (x - halfway)**3 + (x - halfway)**2 + (x - halfway))/(halfway**4 + halfway**3 + halfway**2 + halfway) # this is between 1 and 0
+        modification    = quartic*4.5 + 0.5 # now between 5 and 0.5
+
+        #print("Current time is %s, the modified quartic divisor is %f" %(current_time, modification))
+
+        wake_time =  wakeFrequency.total_seconds()*1e9/modification
+
+        return pd.Timedelta('{}ns'.format(int(round(wake_time))))
+
+
     # Internal state and logic specific to this agent subclass.
 
     # Cancel all open orders.
@@ -317,4 +338,5 @@ class ZeroIntelligenceAgent(TradingAgent):
         return True
 
     def getWakeFrequency(self):
-        return pd.Timedelta(self.random_state.randint(low=0, high=100), unit='ns')
+        delta_time = self.random_state.exponential(scale=1.0 / self.lambda_a)
+        return pd.Timedelta('{}ns'.format(int(round(delta_time))))
