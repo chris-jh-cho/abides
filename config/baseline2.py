@@ -19,6 +19,7 @@ from util.order import LimitOrder
 from util.oracle.SparseMeanRevertingOracle import SparseMeanRevertingOracle
 
 from agent.ExchangeAgent import ExchangeAgent
+from agent.ZeroIntelligenceAgent import ZeroIntelligenceAgent
 from agent.ZIP import ZeroIntelligencePlus
 from agent.market_makers.SpreadBasedMarketMakerAgent import SpreadBasedMarketMakerAgent
 from agent.MomentumAgent import MomentumAgent
@@ -52,6 +53,9 @@ parser.add_argument('--end-time',
                     type=parse,
                     help='Ending time of simulation.'
                     )
+parser.add_argument('-b', '--book_freq', 
+                    default=None,
+                    help='Frequency at which to archive order book for visualization')
 parser.add_argument('-l',
                     '--log_dir',
                     default=None,
@@ -137,7 +141,7 @@ LimitOrder.silent_mode = not args.verbose
 
 exchange_log_orders = True
 log_orders = False
-book_freq = 0
+book_freq = args.book_freq
 
 simulation_start_time = dt.datetime.now()
 print("Simulation Start Time: {}".format(simulation_start_time))
@@ -196,7 +200,7 @@ agent_count += 1
 
 
 # 2) ZIP
-num_value = 100
+num_value = 20
 agents.extend([ZeroIntelligencePlus(id=j,
                                     name="ZIP {}".format(j),
                                     type="ZeroIntelligencePlus",
@@ -268,7 +272,23 @@ agents.extend([MomentumAgent(id=j,
                                                                                        dtype='uint64')))
                for j in range(agent_count, agent_count + num_mean_reversion_agents)])
 agent_count += num_mean_reversion_agents
-agent_types.extend("MeanReversionAgent")
+agent_types.extend("ZIPAgent")
+
+
+# 6) ZI
+num_value = 500
+agents.extend([ZeroIntelligencePlus(id=j,
+                                    name="Zero Intelligence {}".format(j),
+                                    type="ZeroIntelligenceAgent",
+                                    symbol=symbol,
+                                    starting_cash=starting_cash,
+                                    lambda_a = 5e-11,
+                                    log_orders=log_orders,
+                                    random_state=np.random.RandomState(seed=np.random.randint(low=0, high=2 ** 31 - 1, dtype='uint64')))
+               for j in range(agent_count, agent_count + num_value)])
+agent_count += num_value
+agent_types.extend(['ZeroIntelligenceAgent'])
+
 
 
 ########################################################################################################################
