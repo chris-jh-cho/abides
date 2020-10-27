@@ -25,7 +25,7 @@ class MomentumAgent(TradingAgent):
         self.margin = margin
         self.lambda_a = lambda_a
 
-        self.size = self.random_state.randint(self.min_size, self.max_size)
+        self.order_size = 100
         self.mid_list, self.avg_20_list, self.avg_50_list = [], [], []
         self.log_orders = log_orders
         self.state = "AWAITING_WAKEUP"
@@ -54,11 +54,15 @@ class MomentumAgent(TradingAgent):
                 if len(self.mid_list) > 20: self.avg_20_list.append(MomentumAgent.ma(self.mid_list, n=self.short_duration)[-1].round(2))
                 if len(self.mid_list) > 50: self.avg_50_list.append(MomentumAgent.ma(self.mid_list, n=self.long_duration)[-1].round(2))
                 if len(self.avg_20_list) > 0 and len(self.avg_50_list) > 0:
+
+                    # 20201026 Chris Cho: Query new order size
+                    self.getOrderSize()
+
                     # 20200928 Chris Cho: Added the margin function
                     if self.avg_20_list[-1] >= self.avg_50_list[-1] + self.margin:
-                        self.placeLimitOrder(self.symbol, quantity=self.size, is_buy_order=True, limit_price=ask)
+                        self.placeLimitOrder(self.symbol, quantity=self.order_size, is_buy_order=True, limit_price=ask)
                     elif self.avg_20_list[-1] < self.avg_50_list[-1] - self.margin:
-                        self.placeLimitOrder(self.symbol, quantity=self.size, is_buy_order=False, limit_price=bid)
+                        self.placeLimitOrder(self.symbol, quantity=self.order_size, is_buy_order=False, limit_price=bid)
             #set wakeup time
             self.setWakeup(currentTime + self.getWakeFrequency())
             self.state = 'AWAITING_WAKEUP'
@@ -66,6 +70,32 @@ class MomentumAgent(TradingAgent):
     def getWakeFrequency(self):
         delta_time = self.random_state.exponential(scale=1.0 / self.lambda_a)
         return pd.Timedelta('{}ns'.format(int(round(delta_time))))
+
+
+    # 20201026 Chris Cho: function to query order size
+    def getOrderSize(self):
+        
+        # round up the order size to prevent orders of size 0
+        order_size = np.ceil(70/np.random.power(3.5))
+
+        # select random number
+        i = self.random_state.rand()
+
+        # with a chance, submit order as it is
+        if i < 0.2:
+            self.order_size = order_size
+
+        # otherwise, round to nearest 10 orders
+        else:
+
+            # quick hack to prevent orders rounding to 0
+            if order_size < 5:
+                order_size += 5
+
+            # round to nearest 10
+            self.order_size = np.round(order_size, -1)
+        
+        return None
 
 
     @staticmethod

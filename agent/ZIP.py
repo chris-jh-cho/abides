@@ -32,8 +32,8 @@ class ZeroIntelligencePlus(TradingAgent):
         self.lambda_a = lambda_a  # mean arrival rate of ZI agents - this is the exp. distribution parameter to be tuned
         self.mkt_open_time = mkt_open_time
         self.mkt_close_time = mkt_close_time
-        self.order_size = 100 #order size is fixed at 100 to start - the order size needs to be tuned
-        self.prev_holding = 0
+        self.order_size = np.ceil(70/np.random.power(3.5)) #order size is fixed at 100 to start - the order size needs to be tuned
+        self.total_order = self.order_size
         # std of 500 should be plenty
         if self.buy:
             self.limit_price = 100000 + np.random.uniform(-5000, 0)
@@ -197,18 +197,36 @@ class ZeroIntelligencePlus(TradingAgent):
 
         # volume should be adjusted on the go until a particular transaction at a given proce
         # is completed
+        if self.buy:
+            current_holding = self.getHoldings(self.symbol)
+
+        else:
+            current_holding = -1 * self.getHoldings(self.symbol)
 
 
-        current_holding = self.getHoldings(self.symbol)
+        prev_order_size = copy.deepcopy(self.order_size)
 
-        # if 100 units have been traded (i.e. designated volume has been transacted)
-        if current_holding % 100 == 0 and current_holding != self.prev_holding:
+        # if all designated units have been traded
+        if current_holding == self.total_order:
+
+            """
+            print("\nCurrent holding is: ", current_holding,
+                "\nOrders so far adds up to: ", self.total_order,
+                "\nPrevious order size was: ", prev_order_size)
+            """
 
             # reset profit margin
             self.profit_margin = self.initial_profit_margin
 
-            # order size remains at 100
-            self.order_size = 100
+            # choose new order size
+            self.getOrderSize()
+
+            # order is fully transacted, thus add new order size to the total
+            self.total_order += self.order_size
+
+            """
+            print("Order has been fully executed. New order size is: ", self.order_size)
+            """
 
             # receive new price
             if self.buy:
@@ -217,14 +235,18 @@ class ZeroIntelligencePlus(TradingAgent):
             else:
                 self.limit_price = 100000 + np.random.uniform(-5000, 0)
 
-            self.prev_holding = current_holding
-
 
         # if transaction has not yet completed at this price
         else:
 
-            self.order_size = 100 - current_holding % 100
+            self.order_size = self.total_order - current_holding
 
+            """
+            print("\nCurrent holding is: ", current_holding,
+                "\nOrders so far adds up to: ", self.total_order,
+                "\nOrder has not been fully executed. New order size is: ", self.order_size,
+                "\nPrevious order size was: ", prev_order_size)
+            """
 
         # Determine the limit price.
         shout_price = limit_price * (1 - self.profit_margin) if self.buy else limit_price * (1 + self.profit_margin)
@@ -416,3 +438,29 @@ class ZeroIntelligencePlus(TradingAgent):
     def getWakeFrequency(self):
         delta_time = self.random_state.exponential(scale=1.0 / self.lambda_a)
         return pd.Timedelta('{}ns'.format(int(round(delta_time))))
+
+
+        # 20201026 Chris Cho: function to query order size
+    def getOrderSize(self):
+        
+        # round up the order size to prevent orders of size 0
+        order_size = np.ceil(70/np.random.power(3.5))
+
+        # select random number
+        i = self.random_state.rand()
+
+        # with a chance, submit order as it is
+        if i < 0.2:
+            self.order_size = order_size
+
+        # otherwise, round to nearest 10 orders
+        else:
+
+            # quick hack to prevent orders rounding to 0
+            if order_size < 5:
+                order_size += 5
+
+            # round to nearest 10
+            self.order_size = np.round(order_size, -1)
+        
+        return None
