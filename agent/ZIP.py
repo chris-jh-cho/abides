@@ -35,17 +35,14 @@ class ZeroIntelligencePlus(TradingAgent):
         self.order_size = np.ceil(70/np.random.power(3.5)) #order size is fixed at 100 to start - the order size needs to be tuned
         self.total_order = self.order_size
         # std of 500 should be plenty
-        if self.buy:
-            self.limit_price = 100000 + np.random.uniform(-5000, 0)
 
-        else:
-            self.limit_price = 100000 + np.random.uniform(0, 5000)
-
+        self.limit_price = 0
         self.counter = 0
 
+        """
         # we are not querying from an oracle right now
-        #self.limit_price = self.oracle.observePrice(self.symbol, startTime, sigma_n=self.sigma_n,random_state=self.random_state)
-
+        self.limit_price = self.oracle.observePrice(self.symbol, startTime, sigma_n=self.sigma_n,random_state=self.random_state)
+        """
 
         # ZIP update parameters
         self.target_price           = 0 #target price just needs to exist
@@ -83,6 +80,16 @@ class ZeroIntelligencePlus(TradingAgent):
         super().kernelStarting(startTime)
 
         self.oracle = self.kernel.oracle
+
+        # set the limit price once kernel starts
+        if self.buy:
+            self.limit_price = self.oracle.getDailyOpenPrice(self.symbol, self.mkt_open_time) + np.random.uniform(-50, 0)
+            print("Starting buy price is: ", self.limit_price)
+
+        else:
+            self.limit_price = self.oracle.getDailyOpenPrice(self.symbol, self.mkt_open_time) + np.random.uniform(0, 50)
+            print("Starting sell price is: ", self.limit_price)
+
 
     def kernelStopping(self):
         # Always call parent method to be safe.
@@ -195,7 +202,7 @@ class ZeroIntelligencePlus(TradingAgent):
         limit_price = self.limit_price
         history = self.getKnownStreamHistory(self.symbol)
 
-        # volume should be adjusted on the go until a particular transaction at a given proce
+        # volume should be adjusted on the go until a particular transaction at a given process
         # is completed
         if self.buy:
             current_holding = self.getHoldings(self.symbol)
@@ -204,7 +211,7 @@ class ZeroIntelligencePlus(TradingAgent):
             current_holding = -1 * self.getHoldings(self.symbol)
 
 
-        prev_order_size = copy.deepcopy(self.order_size)
+        #prev_order_size = copy.deepcopy(self.order_size)
 
         # if all designated units have been traded
         if current_holding == self.total_order:
@@ -230,10 +237,10 @@ class ZeroIntelligencePlus(TradingAgent):
 
             # receive new price
             if self.buy:
-                self.limit_price = 100000 + np.random.uniform(0, 5000)
+                self.limit_price = self.oracle.observePrice(self.symbol, self.currentTime, sigma_n=self.sigma_n,random_state=self.random_state) + np.random.uniform(-50, 0)
 
             else:
-                self.limit_price = 100000 + np.random.uniform(-5000, 0)
+                self.limit_price = self.oracle.observePrice(self.symbol, self.currentTime, sigma_n=self.sigma_n,random_state=self.random_state) + np.random.uniform(0, 50)
 
 
         # if transaction has not yet completed at this price
@@ -416,7 +423,8 @@ class ZeroIntelligencePlus(TradingAgent):
         if self.counter % 50 == 0:
             print("Current time: ", current_time, "\nCurrent modifier: ", modification, 
                     "\nCurrent wake frequency (s): ", round(wakeFrequency.total_seconds()), 
-                    "\nModified wake frequency (s): ", round(wake_time/1e9), "\n")
+                    "\nModified wake frequency (s): ", round(wake_time/1e9),
+                     "\nCurrent limit price: ", self.limit_price, "\n")
         
         self.counter += 1
 
