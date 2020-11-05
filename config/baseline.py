@@ -7,7 +7,7 @@ from agent.MeanReversionAgent import MeanReversionAgent
 from agent.market_makers.SpreadBasedMarketMakerAgent import SpreadBasedMarketMakerAgent
 
 from util.order import LimitOrder
-from util.oracle.SparseMeanRevertingOracle import SparseMeanRevertingOracle
+from util.oracle.ExternalFileOracle import ExternalFileOracle
 from util import util
 
 import numpy as np
@@ -131,7 +131,8 @@ defaultComputationDelay = 0        # one second
 
 # Note: sigma_s is no longer used by the agents or the fundamental (for sparse discrete simulation).
 
-symbols = { 'JPM' : { 'r_bar' : 1e5, 
+
+symbols = { 'IBM' : { 'r_bar' : 1e5, 
                       'kappa' : 1.67e-12, 
                       'agent_kappa' : 1.67e-15, 
                       'sigma_s' : 0, 
@@ -140,7 +141,8 @@ symbols = { 'JPM' : { 'r_bar' : 1e5,
                       'megashock_mean' : 1e3, 
                       'megashock_var' : 5e4, 
                       'random_state' : np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 2, dtype='uint64')) } }
- 
+
+
 
 ### Configure the Kernel.
 kernel = Kernel("Base Kernel", random_state = np.random.RandomState(seed=np.random.randint(low=0,high=2**31 - 1, dtype='uint64')))
@@ -166,7 +168,7 @@ mkt_close = midnight + pd.to_timedelta('16:00:00')
 
 # Configure an appropriate oracle for all traded stocks.
 # All agents requiring the same type of Oracle will use the same oracle instance.
-oracle = SparseMeanRevertingOracle(mkt_open, mkt_close, symbols)
+oracle = ExternalFileOracle(symbols)
 
 
 # Create the exchange.
@@ -196,7 +198,7 @@ agent_count += num_exchanges
 starting_cash = 10000000
 
 # Here are the zero intelligence agents.
-symbol = 'JPM'
+symbol = 'IBM'
 s = symbols[symbol]
 
 # Tuples are: (# agents, R_min, R_max, eta).
@@ -222,7 +224,7 @@ for i,x in enumerate(zi):
                                         r_bar=s['r_bar'], #true mean fundamental value
                                         kappa=s['agent_kappa'], #mean reversion parameter
                                         sigma_s=s['fund_vol'], #shock variance
-                                        sigma_pv=5e6, #private value variance
+                                        sigma_pv=10, #private value variance
                                         q_max=10, #max unit holding
                                         R_min=x[1], #minimum surplus
                                         R_max=x[2], #maximum surplus
@@ -251,7 +253,7 @@ for i,x in enumerate(zi_plus):
                                        mkt_close_time=mkt_close, 
                                        symbol=symbol,
                                        starting_cash=starting_cash,
-                                       sigma_n=sigma_n,
+                                       sigma_n=0,#sigma_n,
                                        q_max=10,
                                        R_min=x[1],
                                        R_max=x[2],
