@@ -9,9 +9,9 @@ import pandas as pd
 class ZeroIntelligenceAgent(TradingAgent):
 
     def __init__(self, id, name, type, mkt_open_time, mkt_close_time, symbol='IBM', 
-                starting_cash=100000, sigma_n=1000, r_bar=100000, kappa=0.05,
+                starting_cash=100000, sigma_n=50, r_bar=100000, kappa=0.05,
                 sigma_s=100000, q_max=10000, sigma_pv=5000000, R_min=0, 
-                R_max=250, eta=1.0, lambda_a=0.005, log_orders=False, 
+                R_max=0, eta=1.0, lambda_a=0.005, log_orders=False, 
                 random_state=None):
 
         # Base class init.
@@ -32,6 +32,7 @@ class ZeroIntelligenceAgent(TradingAgent):
         self.mkt_open_time = mkt_open_time
         self.mkt_close_time = mkt_close_time
         self.order_size = 100
+        self.counter = 0
 
         # The agent uses this to track whether it has begun its strategy or is still
         # handling pre-market tasks.
@@ -79,29 +80,6 @@ class ZeroIntelligenceAgent(TradingAgent):
                                                                  sigma_n=0,
                                                                  random_state=self.random_state)
 
-        # Start with surplus as private valuation of shares held.
-        if H > 0:
-            surplus = sum([self.theta[x + self.q_max - 1] for x in range(1, H + 1)])
-        elif H < 0:
-            surplus = -sum([self.theta[x + self.q_max - 1] for x in range(H + 1, 1)])
-        else:
-            surplus = 0
-
-        log_print("surplus init: {}", surplus)
-
-        # Add final (real) fundamental value times shares held.
-        surplus += rT * H
-
-        log_print("surplus after holdings: {}", surplus)
-
-        # Add ending cash value and subtract starting cash value.
-        surplus += self.holdings['CASH'] - self.starting_cash
-
-        self.logEvent('FINAL_VALUATION', surplus, True)
-
-        log_print(
-            "{} final report.  Holdings {}, end cash {}, start cash {}, final fundamental {}, preferences {}, surplus {}",
-            self.name, H, self.holdings['CASH'], self.starting_cash, rT, self.theta, surplus)
 
     def wakeup(self, currentTime):
         # Parent class handles discovery of exchange times and market_open wakeup call.
@@ -182,78 +160,11 @@ class ZeroIntelligenceAgent(TradingAgent):
         log_print("{} observed {} at {}", self.name, obs_t, self.currentTime)
 
         # Flip a coin to decide if we will buy or sell a unit at this time.
-        q = int(self.getHoldings(self.symbol) / 100) # q now represents an index to how many 100 lots are held
-
-        if q >= self.q_max:
-            buy = False
-            log_print("Long holdings limit: agent will SELL")
-        elif q <= -self.q_max:
-            buy = True
-            log_print("Short holdings limit: agent will BUY")
-        else:
-            buy = bool(self.random_state.randint(0, 2))
-            log_print("Coin flip: agent will {}", "BUY" if buy else "SELL")
-
-        # Update internal estimates of the current fundamental value and our error of same.
-
-        # If this is our first estimate, treat the previous wake time as "market open".
-        if self.prev_wake_time is None: self.prev_wake_time = self.mkt_open
-
-        # First, obtain an intermediate estimate of the fundamental value by advancing
-        # time from the previous wake time to the current time, performing mean
-        # reversion at each time step.
-
-        # delta must be integer time steps since last wake
-        delta = (self.currentTime - self.prev_wake_time) / np.timedelta64(1, 'ns')
-
-        # Update r estimate for time advancement.
-        r_tprime = (1 - (1 - self.kappa) ** delta) * self.r_bar
-        r_tprime += ((1 - self.kappa) ** delta) * self.r_t
-
-        # Update sigma estimate for time advancement.
-        sigma_tprime = ((1 - self.kappa) ** (2 * delta)) * self.sigma_t
-        sigma_tprime += ((1 - (1 - self.kappa) ** (2 * delta)) / (1 - (1 - self.kappa) ** 2)) * self.sigma_s
-
-        # Apply the new observation, with "confidence" in the observation inversely proportional
-        # to the observation noise, and "confidence" in the previous estimate inversely proportional
-        # to the shock variance.
-        self.r_t = (self.sigma_n / (self.sigma_n + sigma_tprime)) * r_tprime
-        self.r_t += (sigma_tprime / (self.sigma_n + sigma_tprime)) * obs_t
-
-        self.sigma_t = (self.sigma_n * self.sigma_t) / (self.sigma_n + self.sigma_t)
-
-        # Now having a best estimate of the fundamental at time t, we can make our best estimate
-        # of the final fundamental (for time T) as of current time t.  Delta is now the number
-        # of time steps remaining until the simulated exchange closes.
-        delta = max(0, (self.mkt_close - self.currentTime) / np.timedelta64(1, 'ns'))
-
-        # IDEA: instead of letting agent "imagine time forward" to the end of the day,
-        #       impose a maximum forward delta, like ten minutes or so.  This could make
-        #       them think more like traders and less like long-term investors.  Add
-        #       this line of code (keeping the max() line above) to try it.
-        # delta = min(delta, 1000000000 * 60 * 10)
-
-        r_T = (1 - (1 - self.kappa) ** delta) * self.r_bar
-        r_T += ((1 - self.kappa) ** delta) * self.r_t
-
-        # Our final fundamental estimate should be quantized to whole units of value.
-        r_T = int(round(r_T))
-
-        # Finally (for the final fundamental estimation section) remember the current
-        # time as the previous wake time.
-        self.prev_wake_time = self.currentTime
-
-        log_print("{} estimates r_T = {} as of {}", self.name, r_T, self.currentTime)
-
-        # Determine the agent's total valuation.
-        q += (self.q_max - 1)
-        theta = self.theta[q + 1 if buy else q]
-        v = r_T + theta
-
-        log_print("{} total unit valuation is {} (theta = {})", self.name, v, theta)
+        buy = bool(self.random_state.randint(0, 2))
+        log_print("Coin flip: agent will {}", "BUY" if buy else "SELL")
 
         # Return values needed to implement strategy and select limit price.
-        return v, buy
+        return obs_t, buy
 
     def placeOrder(self):
         # Called when it is time for the agent to determine a limit price and place an order.
@@ -265,7 +176,14 @@ class ZeroIntelligenceAgent(TradingAgent):
         R = self.random_state.randint(self.R_min, self.R_max + 1)
 
         # Determine the limit price.
-        p = v - R if buy else v + R
+        p = v# - R if buy else v + R
+
+        """
+        if self.counter % 50 == 0:
+            print("\nZI current limit price: ", p, "\n")
+
+        self.counter += 1
+        """
 
         # Either place the constructed order, or if the agent could secure (eta * R) surplus
         # immediately by taking the inside bid/ask, do that instead.
