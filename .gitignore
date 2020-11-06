@@ -9,3 +9,6 @@ venv/
 .idea/
 .ipynb/
 .ipynb_checkpoints/
+data/IBM_adjusted.txt
+data/aapl_2020_10_26.bz2
+data/intraday_1min_AAPL.csv
