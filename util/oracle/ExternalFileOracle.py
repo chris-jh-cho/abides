@@ -23,12 +23,12 @@ class ExternalFileOracle:
         log_print("Oracle: loading fundamental price series...")
         """
         for symbol, params_dict in self.symbols.items():
-            fundamental_file_path = params_dict["../../data/IBM.bz2"]
+            fundamental_file_path = params_dict["\\..\\..\\data\\IBM.bz2"]
             log_print("Oracle: loading {}", fundamental_file_path)
             fundamental_df = pd.read_pickle(fundamental_file_path)
             fundamentals.update({symbol: fundamental_df})
         """
-        fundamental_file_path = "../../data/IBM.bz2"
+        fundamental_file_path = "\\..\\..\\data\\IBM.bz2"
         log_print("Oracle: loading {}", fundamental_file_path)
         fundamental_df = pd.read_pickle(fundamental_file_path)
         fundamentals.update({"IBM": fundamental_df})
