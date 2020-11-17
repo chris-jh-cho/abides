@@ -2,6 +2,7 @@ import pandas as pd
 from util.util import log_print
 from bisect import bisect_left
 from math import sqrt
+import os
 
 
 class ExternalFileOracle:
@@ -28,7 +29,8 @@ class ExternalFileOracle:
             fundamental_df = pd.read_pickle(fundamental_file_path)
             fundamentals.update({symbol: fundamental_df})
         """
-        fundamental_file_path = "\\..\\..\\data\\IBM.bz2"
+        dirname = os.path.dirname(__file__)
+        fundamental_file_path = os.path.join(dirname, "..\\..\\data\\IBM.bz2")
         log_print("Oracle: loading {}", fundamental_file_path)
         fundamental_df = pd.read_pickle(fundamental_file_path)
         fundamentals.update({"IBM": fundamental_df})
