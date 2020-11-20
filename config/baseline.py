@@ -163,7 +163,7 @@ mkt_open = midnight + pd.to_timedelta('09:30:00')
 
 # And close it at 4:00 PM.
 # lets run it for just 1h for now
-mkt_close = midnight + pd.to_timedelta('16:00:00')
+mkt_close = midnight + pd.to_timedelta('10:00:00')
 
 
 # Configure an appropriate oracle for all traded stocks.
