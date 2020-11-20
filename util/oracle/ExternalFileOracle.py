@@ -3,6 +3,7 @@ from util.util import log_print
 from bisect import bisect_left
 from math import sqrt
 import os
+import pickle5 as pickle
 
 
 class ExternalFileOracle:
