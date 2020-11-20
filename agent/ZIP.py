@@ -420,6 +420,7 @@ class ZeroIntelligencePlus(TradingAgent):
 
         wake_time =  wakeFrequency.total_seconds()*1e9/modification
 
+        """
         if self.counter % 50 == 0:
             print("Current time: ", current_time, "\nCurrent modifier: ", modification, 
                     "\nCurrent wake frequency (s): ", round(wakeFrequency.total_seconds()), 
@@ -427,6 +428,7 @@ class ZeroIntelligencePlus(TradingAgent):
                      "\nCurrent limit price: ", self.limit_price, "\n")
         
         self.counter += 1
+        """
 
         return pd.Timedelta('{}ns'.format(int(round(wake_time))))
         
