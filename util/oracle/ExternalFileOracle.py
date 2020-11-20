@@ -33,7 +33,7 @@ class ExternalFileOracle:
         dirname = os.path.dirname(__file__)
         fundamental_file_path = os.path.join(dirname, "../../data//IBM.bz2") # change / to \\ for windows
         log_print("Oracle: loading {}", fundamental_file_path)
-        fundamental_df = pickle(fundamental_file_path)#pd.read_pickle(fundamental_file_path)
+        fundamental_df = pickle.dumps(fundamental_file_path, protocol=5)#pd.read_pickle(fundamental_file_path)
         fundamentals.update({"IBM": fundamental_df})
         
 
