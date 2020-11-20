@@ -4,6 +4,7 @@ from bisect import bisect_left
 from math import sqrt
 import os
 
+
 class ExternalFileOracle:
     """ Oracle using an external price series as the fundamental. The external series are specified files in the ABIDES
         config. If an agent requests the fundamental value in between two timestamps the returned fundamental value is
@@ -29,9 +30,9 @@ class ExternalFileOracle:
             fundamentals.update({symbol: fundamental_df})
         """
         dirname = os.path.dirname(__file__)
-        fundamental_file_path = os.path.join(dirname, "../../data//IBM.csv")
+        fundamental_file_path = os.path.join(dirname, "../../data//IBM.bz2")
         log_print("Oracle: loading {}", fundamental_file_path)
-        fundamental_df = pd.read_csv(fundamental_file_path)
+        fundamental_df = pd.read_pickle(fundamental_file_path)
         fundamentals.update({"IBM": fundamental_df})
         
 
