@@ -13,6 +13,8 @@ from util import util
 import numpy as np
 import pandas as pd
 import sys
+import datetime as dt
+from dateutil.parser import parse
 
 
 # Some config files require additional command line parameters to easily
@@ -20,22 +22,55 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser(description='Detailed options for sparse_zi config.')
-parser.add_argument('-b', '--book_freq', default=None,
-                    help='Frequency at which to archive order book for visualization')
-parser.add_argument('-c', '--config', required=True,
-                    help='Name of config file to execute')
-parser.add_argument('-l', '--log_dir', default=None,
-                    help='Log directory name (default: unix timestamp at program start)')
-parser.add_argument('-n', '--obs_noise', type=float, default=1000000,
-                    help='Observation noise variance for zero intelligence agents (sigma^2_n)')
-parser.add_argument('-o', '--log_orders', action='store_true',
-                    help='Log every order-related action by every agent.')
-parser.add_argument('-s', '--seed', type=int, default=None,
-                    help='numpy.random.seed() for simulation')
-parser.add_argument('-v', '--verbose', action='store_true',
-                    help='Maximum verbosity!')
-parser.add_argument('--config_help', action='store_true',
-                    help='Print argument options for this config file')
+parser.add_argument('-b', '--book_freq', 
+                    default=None,
+                    help='Frequency at which to archive order book for visualization'
+                    )
+parser.add_argument('-c', '--config', 
+                    required=True,
+                    help='Name of config file to execute'
+                    )
+parser.add_argument('-l', '--log_dir', 
+                    default=None,
+                    help='Log directory name (default: unix timestamp at program start)'
+                    )
+parser.add_argument('-n', '--obs_noise', 
+                    type=float, 
+                    default=1000000,
+                    help='Observation noise variance for zero intelligence agents (sigma^2_n)'
+                    )
+parser.add_argument('-o', '--log_orders', 
+                    action='store_true',
+                    help='Log every order-related action by every agent.'
+                    )
+parser.add_argument('-s', '--seed', 
+                    type=int, 
+                    default=None,
+                    help='numpy.random.seed() for simulation'
+                    )
+parser.add_argument('-v', '--verbose', 
+                    action='store_true',
+                    help='Maximum verbosity!'
+                    )
+parser.add_argument('--config_help', 
+                    action='store_true',
+                    help='Print argument options for this config file'
+                    )
+parser.add_argument('-d', '--historical-date',
+                    required=True,
+                    type=parse,
+                    help='historical date being simulated in format YYYYMMDD.'
+                    )
+parser.add_argument('--start-time',
+                    default='09:30:00',
+                    type=parse,
+                    help='Starting time of simulation.'
+                    )
+parser.add_argument('--end-time',
+                    default='16:00:00',
+                    type=parse,
+                    help='Ending time of simulation.'
+                    )
 
 args, remaining_args = parser.parse_known_args()
 
@@ -44,7 +79,7 @@ if args.config_help:
   sys.exit()
 
 # Historical date to simulate.  Required even if not relevant.
-historical_date = pd.to_datetime('2019-06-28')
+historical_date = pd.to_datetime(args.historical_date)
 
 # Requested log directory.
 log_dir = args.log_dir
@@ -158,12 +193,8 @@ agent_types = []
 
 ### Configure an exchange agent.
 
-# Let's open the exchange at 9:30 AM.
-mkt_open = midnight + pd.to_timedelta('09:30:00')
-
-# And close it at 4:00 PM.
-# lets run it for just 1h for now
-mkt_close = midnight + pd.to_timedelta('10:00:00')
+mkt_open = historical_date + pd.to_timedelta(args.start_time.strftime('%H:%M:%S'))
+mkt_close = historical_date + pd.to_timedelta(args.end_time.strftime('%H:%M:%S'))
 
 
 # Configure an appropriate oracle for all traded stocks.
