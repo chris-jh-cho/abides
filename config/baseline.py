@@ -21,7 +21,7 @@ from dateutil.parser import parse
 # control agent or simulation hyperparameters during coarse parallelization.
 import argparse
 
-parser = argparse.ArgumentParser(description='Detailed options for sparse_zi config.')
+parser = argparse.ArgumentParser(description='Detailed options for baseline config.')
 parser.add_argument('-b', '--book_freq', 
                     default=None,
                     help='Frequency at which to archive order book for visualization'
@@ -56,17 +56,17 @@ parser.add_argument('--config_help',
                     action='store_true',
                     help='Print argument options for this config file'
                     )
-parser.add_argument('-d', '--historical-date',
+parser.add_argument('-d', '--historical_date',
                     required=True,
                     type=parse,
                     help='historical date being simulated in format YYYYMMDD.'
                     )
-parser.add_argument('--start-time',
+parser.add_argument('-st', '--start_time',
                     default='09:30:00',
                     type=parse,
                     help='Starting time of simulation.'
                     )
-parser.add_argument('--end-time',
+parser.add_argument('-et', '--end_time',
                     default='16:00:00',
                     type=parse,
                     help='Ending time of simulation.'
