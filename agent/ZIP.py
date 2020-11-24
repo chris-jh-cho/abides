@@ -84,11 +84,11 @@ class ZeroIntelligencePlus(TradingAgent):
         # set the limit price once kernel starts
         if self.buy:
             self.limit_price = self.oracle.getDailyOpenPrice(self.symbol, self.mkt_open_time) + np.random.uniform(-50, 0)
-            print("Starting buy price is: ", self.limit_price)
+            #print("Starting buy price is: ", self.limit_price)
 
         else:
             self.limit_price = self.oracle.getDailyOpenPrice(self.symbol, self.mkt_open_time) + np.random.uniform(0, 50)
-            print("Starting sell price is: ", self.limit_price)
+            #print("Starting sell price is: ", self.limit_price)
 
 
     def kernelStopping(self):
