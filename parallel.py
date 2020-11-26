@@ -5,37 +5,15 @@ import psutil
 import datetime as dt
 import numpy as np
 from dateutil.parser import parse
-import pyDOE 
 
 def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, book_freq, hist_date, mkt_start_time, mkt_end_time):
 
     global_seeds = np.random.randint(0, 2 ** 31, num_simulations)
     print(f'Global Seeds: {global_seeds}')
-    lhc_unit = np.array(pyDOE.lhs(5, num_simulations, "m"))
-    lhc = np.round((lhc_unit.T/[lhc_unit.sum(1)]).T*1000)
 
-    for i in range(len(lhc)):
-        extra = 1000 - lhc[i].sum()
-
-        random_loc = np.random.randint(5)
-
-        lhc[i][random_loc] += extra
-
-
-    for i in range(num_simulations):
-
-        seed        = global_seeds[i]
-        zi_count    = int(lhc[i][0])
-        zip_count   = int(lhc[i][1])
-        mmt_count   = int(lhc[i][2])
-        mr_count    = int(lhc[i][3])
-        mm_count    = int(lhc[i][4])
-
-
-        processes = [f'python -u abides.py -c {config} -l {log_folder}_config_{zi_count}_{zip_count}_{mmt_count}_{mr_count}_{mm_count} \
-                    {"-v" if verbose else ""} -s {seed} -b {book_freq} -d {hist_date} -st {mkt_start_time} -et {mkt_end_time} \
-                    -zi {zi_count} -zip {zip_count} -mmt {mmt_count} -mr {mr_count} -mm {mm_count}']
-
+    processes = [f'python -u abides.py -c {config} -l {log_folder}_seed_{seed} {"-v" if verbose else ""} -s {seed} \
+                 -b {book_freq} -d {hist_date} -st {mkt_start_time} -et {mkt_end_time}'
+                for seed in global_seeds]
                 # need to find a way to name this thing differently than just the seed name
 
     pool = Pool(processes=num_parallel)
