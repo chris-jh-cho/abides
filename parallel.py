@@ -5,7 +5,6 @@ import psutil
 import datetime as dt
 import numpy as np
 from dateutil.parser import parse
-import pyDOE 
 
 def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, book_freq, hist_date, mkt_start_time, mkt_end_time):
 
@@ -38,8 +37,6 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
         processes.append(f'python -u abides.py -c {config} -l {log_folder}_config_{zi_count}_{zip_count}_{mmt_count}_{mr_count}_{mm_count} \
                         {"-v" if verbose else ""} -s {seed} -b {book_freq} -d {hist_date} -st {mkt_start_time} -et {mkt_end_time} \
                         -zi {zi_count} -zip {zip_count} -mmt {mmt_count} -mr {mr_count} -mm {mm_count}')
-
-                # need to find a way to name this thing differently than just the seed name
 
     print(processes)  
     pool = Pool(processes=num_parallel)
