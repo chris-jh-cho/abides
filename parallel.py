@@ -22,6 +22,8 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
         lhc[i][random_loc] += extra
 
 
+    processes = []
+
     for i in range(num_simulations):
 
         seed        = global_seeds[i]
@@ -30,14 +32,16 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
         mmt_count   = int(lhc[i][2])
         mr_count    = int(lhc[i][3])
         mm_count    = int(lhc[i][4])
+        print(f"current config: {zi_count}, {zip_count}, {mmt_count}, {mr_count}, {mm_count}")
 
 
-        processes = [f'python -u abides.py -c {config} -l {log_folder}_config_{zi_count}_{zip_count}_{mmt_count}_{mr_count}_{mm_count} \
-                    {"-v" if verbose else ""} -s {seed} -b {book_freq} -d {hist_date} -st {mkt_start_time} -et {mkt_end_time} \
-                    -zi {zi_count} -zip {zip_count} -mmt {mmt_count} -mr {mr_count} -mm {mm_count}']
+        processes.append(f'python -u abides.py -c {config} -l {log_folder}_config_{zi_count}_{zip_count}_{mmt_count}_{mr_count}_{mm_count} \
+                        {"-v" if verbose else ""} -s {seed} -b {book_freq} -d {hist_date} -st {mkt_start_time} -et {mkt_end_time} \
+                        -zi {zi_count} -zip {zip_count} -mmt {mmt_count} -mr {mr_count} -mm {mm_count}')
 
                 # need to find a way to name this thing differently than just the seed name
 
+    print(processes)  
     pool = Pool(processes=num_parallel)
     pool.map(run_process, processes)
 
@@ -74,7 +78,7 @@ if __name__ == "__main__":
                         default=1000000,
                         help='Observation noise variance for zero intelligence agents (sigma^2_n)'
                         )
-    parser.add_argument('-o', '--log_orders', 
+    parser.add_argument('-o', '--log_orders',
                         action='store_true',
                         help='Log every order-related action by every agent.'
                         )
