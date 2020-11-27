@@ -19,7 +19,7 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
     for i in range(num_simulations):
 
         seed        = global_seeds[i]
-        zi_count    = 1000 - lhc.sum
+        zi_count    = int(1000 - lhc.sum())
         zip_count   = int(lhc[i][0])
         mmt_count   = int(lhc[i][1])
         mr_count    = int(lhc[i][2])
