@@ -11,28 +11,20 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
 
     global_seeds = np.random.randint(0, 2 ** 31, num_simulations)
     print(f'Global Seeds: {global_seeds}')
-    lhc_unit = np.array(pyDOE.lhs(5, num_simulations, "m"))
-    lhc = np.round((lhc_unit.T/[lhc_unit.sum(1)]).T*1000)
-
-    for i in range(len(lhc)):
-        extra = 1000 - lhc[i].sum()
-
-        random_loc = np.random.randint(5)
-
-        lhc[i][random_loc] += extra
-
+    lhc_unit = np.array(pyDOE.lhs(3, num_simulations, "m"))
+    lhc = np.round((lhc_unit.T/[lhc_unit.sum(1)]).T*50)
 
     processes = []
 
     for i in range(num_simulations):
 
         seed        = global_seeds[i]
-        zi_count    = int(lhc[i][0])
-        zip_count   = int(lhc[i][1])
-        mmt_count   = int(lhc[i][2])
-        mr_count    = int(lhc[i][3])
-        mm_count    = int(lhc[i][4])
-        print(f"current config: {zi_count}, {zip_count}, {mmt_count}, {mr_count}, {mm_count}")
+        zi_count    = 1000 - lhc.sum
+        zip_count   = int(lhc[i][0])
+        mmt_count   = int(lhc[i][1])
+        mr_count    = int(lhc[i][2])
+        mm_count    = 1
+        print(f"current config: {zi_count}, {zip_count}, {mmt_count}, {mr_count}")
 
 
         processes.append(f'python -u abides.py -c {config} -l {log_folder}_config_{zi_count}_{zip_count}_{mmt_count}_{mr_count}_{mm_count} \

@@ -375,7 +375,7 @@ for i,x in enumerate(mr):
 
 
 # Market maker 1 agents
-mm = [(args.market_maker, 100, 10)]
+mm = [(10, 100, 10)]
 
 for i,x in enumerate(mm):
   strat_name = "Type {} [order size = {}, window size = {}]".format(i+1, x[1], x[2])
