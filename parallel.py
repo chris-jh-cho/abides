@@ -12,7 +12,7 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
     global_seeds = np.random.randint(0, 2 ** 31, num_simulations)
     print(f'Global Seeds: {global_seeds}')
     lhc_unit = np.array(pyDOE.lhs(3, num_simulations, "m"))
-    lhc = np.round((lhc_unit.T/[lhc_unit.sum(1)]).T*100)
+    lhc = np.round(lhc_unit*100)
 
     processes = []
 
