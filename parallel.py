@@ -19,11 +19,14 @@ def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, 
     for i in range(num_simulations):
 
         seed        = global_seeds[i]
-        zi_count    = int(1000 - lhc.sum())
+
         zip_count   = int(lhc[i][0])
         mmt_count   = int(lhc[i][1])
         mr_count    = int(lhc[i][2])
         mm_count    = 1
+
+        zi_count    = int(1000 - zip_count - mmt_count - mr_count - mm_count)
+
         print(f"current config: {zi_count}, {zip_count}, {mmt_count}, {mr_count}")
 
 
