@@ -70,7 +70,7 @@ parser.add_argument('-et', '--end_time',
                     default='16:00:00',
                     type=parse,
                     help='Ending time of simulation.'
-                    )
+                    )                 
 parser.add_argument('-zi', '--zero_intelligence', 
                     type=int, 
                     default=900,
@@ -96,7 +96,6 @@ parser.add_argument('-mm', '--market_maker',
                     default=1,
                     help='number of market maker agents to add to the simulation'
                     )
-
 args, remaining_args = parser.parse_known_args()
 
 if args.config_help:
@@ -262,7 +261,7 @@ s = symbols[symbol]
 
 # Some configs for ZI agents only (among seven parameter settings).
 # 100 agents
-zi = [ (args.zero_intelligence, 0, 0, 1) ] #, (75, 0, 500, 1), (70, 0, 1000, 0.8), (70, 0, 1000, 1), (70, 0, 2000, 0.8), (70, 250, 500, 0.8), (70, 250, 500, 1) ]
+zi = [ (50, 0, 0, 1) ] #, (75, 0, 500, 1), (70, 0, 1000, 0.8), (70, 0, 1000, 1), (70, 0, 2000, 0.8), (70, 250, 500, 0.8), (70, 250, 500, 1) ]
 
 # ZI strategy split.  Note that agent arrival rates are quite small, because our minimum
 # time step is a nanosecond, and we want the agents to arrive more on the order of
@@ -294,7 +293,7 @@ for i,x in enumerate(zi):
 
 
 # 100 ZIP agents
-zi_plus = [ (args.zero_intelligence_plus, 0, 0, 1) ]
+zi_plus = [ (10, 0, 0, 1) ]
 
 # ZI strategy split.  Note that agent arrival rates are quite small, because our minimum
 # time step is a nanosecond, and we want the agents to arrive more on the order of
@@ -324,7 +323,7 @@ for i,x in enumerate(zi_plus):
 
 
 # Momentum 20 agents
-mmt = [ (args.momentum, 50, 100)]
+mmt = [ (20, 50, 100)]
 
 
 for i,x in enumerate(mmt):
@@ -350,7 +349,7 @@ for i,x in enumerate(mmt):
 
 
 # Mean Reversion 20 agents
-mr = [ (args.mean_reversion, 50, 100)]
+mr = [ (20, 50, 100)]
 
 
 for i,x in enumerate(mr):
@@ -376,7 +375,7 @@ for i,x in enumerate(mr):
 
 
 # Market maker 1 agents
-mm = [(args.market_maker, 100, 10)]
+mm = [(1, 100, 10)]
 
 for i,x in enumerate(mm):
   strat_name = "Type {} [order size = {}, window size = {}]".format(i+1, x[1], x[2])
