@@ -5,6 +5,7 @@ import psutil
 import datetime as dt
 import numpy as np
 from dateutil.parser import parse
+import pyDOE
 
 def run_in_parallel(num_simulations, num_parallel, config, log_folder, verbose, book_freq, hist_date, mkt_start_time, mkt_end_time):
 
