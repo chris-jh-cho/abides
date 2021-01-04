@@ -122,7 +122,7 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
             self.state = 'AWAITING_MARKET_DATA'
             self.last_mid = mid
 
-    def computeOrdersToCancel(self, mid):
+    def computeOrdersToCancel(self, mid="we_should_never_see_this"):
         """ Given a mid price, computes the orders that need to be removed from orderbook, and pops these orders from
             bid and ask deques.
 
@@ -131,6 +131,11 @@ class SpreadBasedMarketMakerAgent(TradingAgent):
 
         :return:
         """
+
+        # 2021/01/04 Chris Cho - "mid" can be empty according to the current architecture.
+        # This will throw an error, before this function can return an empty array of
+        # orders to cancel. Therefore, we have set the default value of "mid" to a string.
+        # This will trigger an obvious error if anything else is going wrong.
 
         orders_to_cancel = []
 
